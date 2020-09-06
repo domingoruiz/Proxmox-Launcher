@@ -1,0 +1,351 @@
+#!/bin/bash
+
+############################################################################
+## Proxmox Launcher 1.0
+## Utilidad para el acceso a máquinas virtuales Proxmox
+##
+## Domingo Ruiz Arroyo <ordenadordomi@gmail.com>
+## https://github.com/domingoruiz/Proxmox-Launcher
+## 2020
+############################################################################
+
+##
+## Operaciones de la aplicación
+##
+
+# Pantalla de inicio. Desde aquí se podran elegir las distintas operaciones de la app
+function pantalla_inicio() {
+	#Creamos la carpeta de la app
+	if [ -d "${HOME}/PROXMOX_LAUNCHER" ]
+	then
+	   cd "${HOME}/PROXMOX_LAUNCHER"
+	else
+	   mkdir "${HOME}/PROXMOX_LAUNCHER"
+	   cd "${HOME}/PROXMOX_LAUNCHER"
+	fi
+
+	#Montamos el menu de inicio
+	items=$(get_credenciales)
+
+	CHOICE=$(
+		whiptail --title "Proxmox Launcher" --menu "Proxmox Launcher es una utilidad para acceder a máquinas virtuales Proxmox de una forma rápida y sencilla." 25 80 12 \
+			${items} \
+			"@@@@@@@@@@@@@@@" "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"   \
+			"1" "Añadir nueva conexión"  \
+			"2" "Eliminar conexión" \
+			"3" "Modo Invitado" \
+			"@@@@@@@@@@@@@@@" "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"   \
+			"4" "Acerca de" \
+			"5" "Salir"  3>&2 2>&1 1>&3	
+		)
+
+	exitstatus=$?
+	[[ "$exitstatus" = 1 ]] && exit;
+
+
+	#Procesamos según la opción elegida
+	case $CHOICE in
+        "@@@@@@@@@@@@@@@")
+            pantalla_inicio
+        ;;
+        1)
+            añadir_conexion
+        ;;
+        2)
+            eliminar_conexion
+        ;;
+        3)
+            modo_invitado
+        ;;
+        4)
+            acerca_de
+        ;;
+        5)
+            exit
+        ;;
+        *)
+			# Nos conectamos según las credenciales elegidas y elegimos VM
+			i=0
+			result=()
+			while IFS= read -r line
+			do
+			  result[i]=$line
+			  i=${i}+1
+			done < "${HOME}/PROXMOX_LAUNCHER/${CHOICE}"
+
+			NOMBRE="${result[0]}"
+			SERVER="${result[1]}"
+			USERNAME="${result[2]}"
+			PASSWORD="${result[3]}"
+			REALM="${result[4]}"
+
+			vms=$(get_vms)
+
+			NODE_VMID=$(whiptail --title "Proxmox Launcher" --menu "Seleccione la máquina que desea visualizar. En caso de que este apagada se encendera." 25 80 12 --cancel-button Cancel --ok-button Select ${vms} 3>&1 1>&2 2>&3)
+			exitstatus=$?
+			[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+
+			# Una vez elegida la encendemos y nos conectamos.
+			IFS='-' read -r -a NODE_VMID <<< "$NODE_VMID"
+
+			NODE=${NODE_VMID[0]}
+			NODE="${NODE%%\.*}"
+
+			DATA="$(curl -f -s -S -k --data-urlencode "username=$USERNAME@$REALM" --data-urlencode "password=$PASSWORD" "https://$SERVER:8006/api2/json/access/ticket")"
+
+			TICKET="${DATA//\"/}"
+			TICKET="${TICKET##*ticket:}"
+			TICKET="${TICKET%%,*}"
+			TICKET="${TICKET%%\}*}"
+
+			CSRF="${DATA//\"/}"
+			CSRF="${CSRF##*CSRFPreventionToken:}"
+			CSRF="${CSRF%%,*}"
+			CSRF="${CSRF%%\}*}"
+
+			curl -f -s -S -k -X POST -b "PVEAuthCookie=$TICKET" -H "CSRFPreventionToken: $CSRF" "https://$SERVER:8006/api2/json/nodes/${NODE}/qemu/${NODE_VMID[1]}/status/start" > /dev/null  
+			sleep 3
+			curl -f -s -S -k -X POST -b "PVEAuthCookie=$TICKET" -H "CSRFPreventionToken: $CSRF" "https://$SERVER:8006/api2/spiceconfig/nodes/${NODE}/qemu/${NODE_VMID[1]}/spiceproxy" > /tmp/spiceproxy
+
+			remote-viewer /tmp/spiceproxy &> /dev/null  
+
+			pantalla_inicio
+        ;;
+    esac
+}		
+
+# Añadir conexión. Permite añadir una nueva conexión al sistema.
+function añadir_conexion() {
+	# Recogemos los datos de conexión
+	formulario_credenciales
+
+	Nombre=$(echo "$Nombre" | tr -d '[[:space:]]')
+
+	echo "${Nombre}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
+	echo "${URL}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
+	echo "${Username}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
+	echo "${Password}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
+	echo "${Realm}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
+
+	#Mensaje exito	
+	whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "Conexión probada correctamente. Se ha guardado en base de datos. Pulse OK para volver al menu." 8 45
+
+    pantalla_inicio
+}
+
+# Eliminar conexión. Permite eliminar unas credenciales Proxmox del sistema.
+function eliminar_conexion() {
+	#Listamos todas las conexiones
+	cd "${HOME}/PROXMOX_LAUNCHER/"
+
+	items=$(get_credenciales)
+
+	CHOICE=$(
+		whiptail --title "Proxmox Launcher" --menu "Elige la conexión a eliminar" 25 80 12 \
+			${items} 3>&2 2>&1 1>&3	
+		)
+	exitstatus=$?
+	[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+
+	#Eliminamos la conexión elegida
+	rm "${HOME}/PROXMOX_LAUNCHER/${CHOICE}"
+
+	#Mensaje exito
+	whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "Conexión eliminada correctamente. Pulse OK para volver al menu." 8 45
+
+    pantalla_inicio
+}
+
+# Modo invitado. Permite conectarse a una máquina virtual Proxmox sin tener que almacenar sus credenciales en el sistema.
+function modo_invitado() {
+	# Recogemos los datos de conexión
+	formulario_credenciales
+
+	# Buscamos las VM de ese usuario
+	i=0
+	result=()
+	while IFS= read -r line
+		do
+	        result[i]=$line
+		    i=${i}+1
+		done < "${HOME}/PROXMOX_LAUNCHER/${CHOICE}"
+
+		NOMBRE="${Nombre}"
+		SERVER="${URL}"
+		USERNAME="${Username}"
+		PASSWORD="${Password}"
+		REALM="${Realm}"
+
+		vms=$(get_vms)
+
+		NODE_VMID=$(whiptail --title "Proxmox Launcher" --menu "Seleccione la máquina que desea visualizar" 25 80 12 --cancel-button Cancel --ok-button Select ${vms} 3>&1 1>&2 2>&3)
+		exitstatus=$?
+		[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+
+		# Nos conectamos a la VM elegida
+		IFS='-' read -r -a NODE_VMID <<< "$NODE_VMID"
+
+		NODE=${NODE_VMID[0]}
+		NODE="${NODE%%\.*}"
+
+		DATA="$(curl -f -s -S -k --data-urlencode "username=$USERNAME@$REALM" --data-urlencode "password=$PASSWORD" "https://$SERVER:8006/api2/json/access/ticket")"
+
+		TICKET="${DATA//\"/}"
+		TICKET="${TICKET##*ticket:}"
+		TICKET="${TICKET%%,*}"
+		TICKET="${TICKET%%\}*}"
+
+		CSRF="${DATA//\"/}"
+		CSRF="${CSRF##*CSRFPreventionToken:}"
+		CSRF="${CSRF%%,*}"
+		CSRF="${CSRF%%\}*}"
+
+		curl -f -s -S -k -X POST -b "PVEAuthCookie=$TICKET" -H "CSRFPreventionToken: $CSRF" "https://$SERVER:8006/api2/json/nodes/${NODE}/qemu/${NODE_VMID[1]}/status/start" > /dev/null  
+		sleep 3
+		curl -f -s -S -k -X POST -b "PVEAuthCookie=$TICKET" -H "CSRFPreventionToken: $CSRF" "https://$SERVER:8006/api2/spiceconfig/nodes/${NODE}/qemu/${NODE_VMID[1]}/spiceproxy" -d "proxy=$SERVER"> /tmp/spiceproxy
+
+		remote-viewer /tmp/spiceproxy &> /dev/null  
+
+		pantalla_inicio		
+}
+
+# Pantalla Acerca De. Aporta información sobre la APP y su desarrollador.
+function acerca_de() {
+	whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "
+    	Proxmox Launcher 1.0
+
+    	Herramienta Open-Source desarrollada por 
+    	Domingo Ruiz Arroyo <ordenadordomi@gmail.com>
+
+    	Disponible para su descarga y uso en 
+    	Github: https://github.com/domingoruiz/Proxmox-Launcher" 15 80
+
+	pantalla_inicio
+}
+
+##
+## Funciones auxiliares
+##
+
+# Esta función devuelve todas las credenciales Proxmox que estan almacenadas en el equipo
+function get_credenciales() {
+	cd "${HOME}/PROXMOX_LAUNCHER/"
+
+	a=1
+	for i in $(ls -C1)
+		do
+			i=$(basename "$i")
+			echo -n "${i} '${i}' "
+			a=$((a + 1))
+		done
+}
+
+# Esta función devuelve todas las VM de un usuario Proxmox
+function get_vms() {
+	TOKEN=`curl -s -k -d "username=$USERNAME@$REALM&password=$PASSWORD" https://$SERVER:8006/api2/json/access/ticket | jq -r .data.ticket`
+
+	NODES=`curl -s -k https://$SERVER:8006/api2/json/nodes -b "PVEAuthCookie=$TOKEN" | jq -r '.data[].node'`
+	for NODE in `echo $NODES`; do
+	    curl -s -k https://$SERVER:8006/api2/json/nodes/$NODE/qemu -b "PVEAuthCookie=$TOKEN" > /tmp/proxvm-qemu.json
+
+	    for VMID in `cat /tmp/proxvm-qemu.json | jq -r '.data[].vmid'`; do
+	        JSON=`cat /tmp/proxvm-qemu.json | jq -r ".data[] | select(.vmid | tonumber | contains($VMID))"`
+	        NAME=`echo $JSON | jq -r .name`
+	        VMID=`echo $JSON | jq -r .vmid`
+	        curl -s -k https://$SERVER:8006/api2/json/nodes/$NODE/qemu/$VMID/config -b "PVEAuthCookie=$TOKEN" > /tmp/proxvm-$VMID.json
+	        TEMPLATE=`cat /tmp/proxvm-$VMID.json | jq -r .data.template`
+
+	        if [ "${TEMPLATE}" != 1 ];
+			then
+				echo -n "${NODE}-${VMID} '${NAME}' "
+			fi
+	    done
+	done
+}
+
+# Formulario para recoger los datos de conexión a Proxmox
+function formulario_credenciales() {
+	Nombre=$(whiptail --title "Proxmox Launcher" --inputbox "Nombre de la nueva conexión" 10 60 "" 3>&1 1>&2 2>&3)
+
+	exitstatus=$?
+	[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+
+	while [ -z "$Nombre" ]; do 
+		whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "Nombre no puede estar vacio" 8 45
+
+    	Nombre=$(whiptail --title "Proxmox Launcher" --inputbox "Nombre de la nueva conexión" 10 60 "" 3>&1 1>&2 2>&3)
+	done
+
+	while [ -f "${HOME}/PROXMOX_LAUNCHER/${Nombre}" ]; do 
+		whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "Nombre de conexión ya existente" 8 45
+
+    	Nombre=$(whiptail --title "Proxmox Launcher" --inputbox "Nombre de la nueva conexión" 10 60 "" 3>&1 1>&2 2>&3)
+    	exitstatus=$?
+		[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+	done
+
+	URL=$(whiptail --title "Proxmox Launcher" --inputbox "IP del servidor Proxmox" 10 60 "" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+
+	while [ -z "$URL" ]; do 
+		whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "IP no puede estar vacia" 8 45
+
+    	URL=$(whiptail --title "Proxmox Launcher" --inputbox "URL del servidor Proxmox" 10 60 "" 3>&1 1>&2 2>&3)
+    	exitstatus=$?
+		[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+	done
+
+	Username=$(whiptail --title "Proxmox Launcher" --inputbox "Usuario del servidor Proxmox" 10 60 "" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+
+	while [ -z "$Username" ]; do 
+		whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "Usuario no puede estar vacio" 8 45
+
+    	Username=$(whiptail --title "Proxmox Launcher" --inputbox "Usuario del servidor Proxmox" 10 60 "" 3>&1 1>&2 2>&3)
+    	exitstatus=$?
+		[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+	done
+
+	Password=$(whiptail --title "Proxmox Launcher" --passwordbox "Contraseña del servidor Proxmox" 10 60 "" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+
+	while [ -z "$Password" ]; do 
+		whiptail \
+    	--title "Proxmox Launcher" \
+    	--msgbox "Contraseña no puede estar vacia" 8 45
+
+    	Password=$(whiptail --title "Proxmox Launcher" --inputbox "Contraseña del servidor Proxmox" 10 60 "" 3>&1 1>&2 2>&3)
+    	exitstatus=$?
+		[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+	done
+
+	Realm=$(
+		whiptail --title "Proxmox Launcher" --menu "Sistema de autentificación a usar" 25 80 12 \
+			"pam" "Linux PAM standard authentication"   \
+			"pve" "Proxmox VE Authentication Server" 3>&2 2>&1 1>&3
+		)
+	exitstatus=$?
+	[[ "$exitstatus" = 1 ]] && pantalla_inicio;
+}
+
+##
+## Ejecutamos la app
+##
+pantalla_inicio
