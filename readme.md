@@ -15,8 +15,8 @@ Descargamos y colocamos el script Proxmox_Launcher en un lugar que nos sea cómo
 
 ```bash
 git clone https://github.com/domingoruiz/Proxmox-Launcher.git
-mv Proxmox-Launcher/Proxmox-Launcher /usr/bin/
-chmod +x /usr/bin/Proxmox-Launcher
+mv Proxmox-Launcher/ProxmoxLauncher /usr/bin/
+chmod +x /usr/bin/ProxmoxLauncher
 ```
 
 ## Uso
@@ -24,7 +24,7 @@ chmod +x /usr/bin/Proxmox-Launcher
 Ejecutamos en terminal o a través de un acceso directo el comando Proxmox-Launcher y automáticamente se nos abrirá la aplicación dentro de la terminal.
 
 ```bash
-Proxmox-Launcher
+ProxmoxLauncher
 ```
 
 ## Desarrollo
