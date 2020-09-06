@@ -107,7 +107,7 @@ function pantalla_inicio() {
 			sleep 3
 			curl -f -s -S -k -X POST -b "PVEAuthCookie=$TICKET" -H "CSRFPreventionToken: $CSRF" "https://$SERVER:8006/api2/spiceconfig/nodes/${NODE}/qemu/${NODE_VMID[1]}/spiceproxy" > /tmp/spiceproxy
 
-			remote-viewer /tmp/spiceproxy &> /dev/null  
+			remote-viewer /tmp/spiceproxy &> /dev/null &
 
 			pantalla_inicio
         ;;
@@ -208,7 +208,7 @@ function modo_invitado() {
 		sleep 3
 		curl -f -s -S -k -X POST -b "PVEAuthCookie=$TICKET" -H "CSRFPreventionToken: $CSRF" "https://$SERVER:8006/api2/spiceconfig/nodes/${NODE}/qemu/${NODE_VMID[1]}/spiceproxy" -d "proxy=$SERVER"> /tmp/spiceproxy
 
-		remote-viewer /tmp/spiceproxy &> /dev/null  
+		remote-viewer /tmp/spiceproxy &> /dev/null &
 
 		pantalla_inicio		
 }
