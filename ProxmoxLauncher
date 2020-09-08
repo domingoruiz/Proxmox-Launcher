@@ -16,12 +16,12 @@
 # Pantalla de inicio. Desde aquí se podran elegir las distintas operaciones de la app
 function pantalla_inicio() {
 	#Creamos la carpeta de la app
-	if [ -d "${HOME}/PROXMOX_LAUNCHER" ]
+	if [ -d "${HOME}/.PROXMOX_LAUNCHER" ]
 	then
-	   cd "${HOME}/PROXMOX_LAUNCHER"
+	   cd "${HOME}/.PROXMOX_LAUNCHER"
 	else
-	   mkdir "${HOME}/PROXMOX_LAUNCHER"
-	   cd "${HOME}/PROXMOX_LAUNCHER"
+	   mkdir "${HOME}/.PROXMOX_LAUNCHER"
+	   cd "${HOME}/.PROXMOX_LAUNCHER"
 	fi
 
 	#Montamos el menu de inicio
@@ -71,7 +71,7 @@ function pantalla_inicio() {
 			do
 			  result[i]=$line
 			  i=${i}+1
-			done < "${HOME}/PROXMOX_LAUNCHER/${CHOICE}"
+			done < "${HOME}/.PROXMOX_LAUNCHER/${CHOICE}"
 
 			NOMBRE="${result[0]}"
 			SERVER="${result[1]}"
@@ -121,11 +121,11 @@ function añadir_conexion() {
 
 	Nombre=$(echo "$Nombre" | tr -d '[[:space:]]')
 
-	echo "${Nombre}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
-	echo "${URL}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
-	echo "${Username}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
-	echo "${Password}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
-	echo "${Realm}" >> "${HOME}/PROXMOX_LAUNCHER/${Nombre}"
+	echo "${Nombre}" >> "${HOME}/.PROXMOX_LAUNCHER/${Nombre}"
+	echo "${URL}" >> "${HOME}/.PROXMOX_LAUNCHER/${Nombre}"
+	echo "${Username}" >> "${HOME}/.PROXMOX_LAUNCHER/${Nombre}"
+	echo "${Password}" >> "${HOME}/.PROXMOX_LAUNCHER/${Nombre}"
+	echo "${Realm}" >> "${HOME}/.PROXMOX_LAUNCHER/${Nombre}"
 
 	#Mensaje exito	
 	whiptail \
@@ -138,7 +138,7 @@ function añadir_conexion() {
 # Eliminar conexión. Permite eliminar unas credenciales Proxmox del sistema.
 function eliminar_conexion() {
 	#Listamos todas las conexiones
-	cd "${HOME}/PROXMOX_LAUNCHER/"
+	cd "${HOME}/.PROXMOX_LAUNCHER/"
 
 	items=$(get_credenciales)
 
@@ -150,7 +150,7 @@ function eliminar_conexion() {
 	[[ "$exitstatus" = 1 ]] && pantalla_inicio;
 
 	#Eliminamos la conexión elegida
-	rm "${HOME}/PROXMOX_LAUNCHER/${CHOICE}"
+	rm "${HOME}/.PROXMOX_LAUNCHER/${CHOICE}"
 
 	#Mensaje exito
 	whiptail \
@@ -172,7 +172,7 @@ function modo_invitado() {
 		do
 	        result[i]=$line
 		    i=${i}+1
-		done < "${HOME}/PROXMOX_LAUNCHER/${CHOICE}"
+		done < "${HOME}/.PROXMOX_LAUNCHER/${CHOICE}"
 
 		NOMBRE="${Nombre}"
 		SERVER="${URL}"
@@ -235,7 +235,7 @@ function acerca_de() {
 
 # Esta función devuelve todas las credenciales Proxmox que estan almacenadas en el equipo
 function get_credenciales() {
-	cd "${HOME}/PROXMOX_LAUNCHER/"
+	cd "${HOME}/.PROXMOX_LAUNCHER/"
 
 	a=1
 	for i in $(ls -C1)
@@ -287,7 +287,7 @@ function formulario_credenciales() {
 		[[ "$exitstatus" = 1 ]] && pantalla_inicio;
 	done
 
-	while [ -f "${HOME}/PROXMOX_LAUNCHER/${Nombre}" ]; do 
+	while [ -f "${HOME}/.PROXMOX_LAUNCHER/${Nombre}" ]; do 
 		whiptail \
     	--title "Proxmox Launcher" \
     	--msgbox "Nombre de conexión ya existente" 8 45
