@@ -1,0 +1,22 @@
+{
+    "name": "domingoruiz/proxmoxlauncher",
+    "type": "app",
+    "description": "Utilidad para acceder rápidamente a máquinas virtuales Proxmox.",
+    "keywords": ["Proxmox", "API", "KVM", "OpenVZ", "Virtualization"],
+    "homepage": "https://github.com/domingoruiz/Proxmox-Launcher",
+    "license": "MIT",
+
+    "authors": [
+        {
+            "name": "Domingo Ruiz Arroyo",
+            "email": "ordenadordomi@gmail.com",
+            "role": "Developer"
+        }
+    ],
+
+    "support": {
+        "issues": "https://github.com/domingoruiz/Proxmox-Launcher/issues",
+        "source": "https://github.com/domingoruiz/Proxmox-Launchers"
+    }
+
+}

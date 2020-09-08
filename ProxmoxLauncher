@@ -282,6 +282,9 @@ function formulario_credenciales() {
     	--msgbox "Nombre no puede estar vacio" 8 45
 
     	Nombre=$(whiptail --title "Proxmox Launcher" --inputbox "Nombre de la nueva conexión" 10 60 "" 3>&1 1>&2 2>&3)
+    	
+    	exitstatus=$?
+		[[ "$exitstatus" = 1 ]] && pantalla_inicio;
 	done
 
 	while [ -f "${HOME}/PROXMOX_LAUNCHER/${Nombre}" ]; do 
