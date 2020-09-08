@@ -33,4 +33,4 @@ Aplicación desarrollada por Domingo Ruiz Arroyo <ordenadordomi@gmail.com>
 ## Licencia
 
 
-Este proyecto se publica bajo la licencia MIT. Consulte el archivo [LICENSE] para obtener más detalles.
+Este proyecto se publica bajo la licencia MIT. Consulte el archivo [LICENSE](../blob/master/LICENSE) para obtener más detalles.
