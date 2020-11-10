@@ -4,11 +4,19 @@ Proxmox Launcher es una utilidad que nos permitira acceder de una forma rápida 
 
 ## Requisitos previos a la instalación
 Para instalar esta aplicación debemos comprobar que tenemos los siguientes componentes instalados en nuestra máquina Linux:
-- remote-viewer
+- virt-viewer
 - jq
 - curl
 - whiptail
 
+Los cuales podemos instalar en Debian/Ubuntu con el siguiente comando:
+```bash
+apt-get install virt-viewer jq curl whiptail
+```
+O en sistemas RHEL con este otro comando:
+```bash
+yum install virt-viewer jq curl whiptail
+```
 ## Instalación
 
 Descargamos y colocamos el script Proxmox_Launcher en un lugar que nos sea cómodo, le damos permiso de ejecución y estará listo para ser usado.
